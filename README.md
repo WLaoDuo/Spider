@@ -6,6 +6,9 @@ https://developer.chrome.com/docs/chromedriver/downloads?hl=zh-cn
 
 
 # javascript文件使用node本地打包
+
 npm init -y
+
 npm install pkg --save-dev
+
 npx pkg .
