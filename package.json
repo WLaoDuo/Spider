@@ -1,0 +1,23 @@
+{
+  "name": "Hexin-V",
+  "version": "1.0.0",
+  "main": "wen.js",
+  "bin": {
+    "wen": "wen.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "targets": [
+      "node16-win-x64"
+    ]
+  }
+}
