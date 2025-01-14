@@ -12,3 +12,6 @@ npm init -y
 npm install pkg --save-dev
 
 npx pkg .
+
+# pyinstaller打包
+pyinstaller --onefile ./spider.py
