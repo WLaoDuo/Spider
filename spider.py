@@ -1,17 +1,31 @@
 from selenium import webdriver
-import time,sys
+import sys,time
 import argparse
 from pathlib import Path
 from bs4 import BeautifulSoup
+import struct
+from datetime import datetime
 #from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 
+def write_binary(shuru,filename):
+    txt_path=Path.cwd()/"FMLDATA"
+    if not txt_path.exists():
+        txt_path.mkdir ()
+    txt_path=txt_path /  str(filename+".DAY")
+    morning_8am = datetime.now().replace(hour=8, minute=0, second=0, microsecond=0)
+    # now=morning_8am.strftime("%Y-%m-%d %H:%M:%S")
+    with open(txt_path,'wb') as f:
+        # f.write(bytes([0x00, 0x63, 0x80, 0x67]))
+        f.write(struct.pack('<i',int(morning_8am.timestamp())))
+        f.write(struct.pack('<f', float(shuru)))
+    print("DAY二进制文件成功写入",txt_path)
 
 def web_spider(driver_path,browser_path):
     options = Options()
-    # options.add_argument("--headless")
+    options.add_argument("--headless")
     service = Service(driver_path)
     options.binary_location = browser_path  # 设置 浏览器的路径
     if 'chromedriver.exe' in str(driver_path):
@@ -127,6 +141,7 @@ def write_txt(shuru,filename):
     except:
         print("error!")
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', type=str, nargs='?', default='C:\Program Files\Google\Chrome\Application\chrome.exe',help='浏览器路径')
@@ -152,21 +167,26 @@ if __name__ == "__main__":
     xieru1=''
     xieru2=''
     xieru3=''
+
     for row in result1:
         tmp=row['当日DDX']
         if tmp=="-":
             tmp="0"
         xieru1=xieru1+("BJ"+str(row['code'])+"\t"+time.strftime("%Y-%m-%d", time.localtime()) +"\t"+tmp)+"\n"
 
+        write_binary(tmp,str(row['code'])+".1")
+
         tmp=row['当日DDY']
         if tmp=="-":
             tmp="0"
         xieru2=xieru2+("BJ"+str(row['code'])+"\t"+time.strftime("%Y-%m-%d", time.localtime()) +"\t"+tmp)+"\n"
+        write_binary(tmp,str(row['code'])+".2")
 
         tmp=row['当日DDZ']
         if tmp=="-":
             tmp="0"
         xieru3=xieru3+("BJ"+str(row['code'])+"\t"+time.strftime("%Y-%m-%d", time.localtime()) +"\t"+tmp)+"\n"
+        write_binary(tmp,str(row['code'])+".3")
         
     write_txt(xieru1,"北交所-当日DDX")
     write_txt(xieru2,"北交所-当日DDY")
