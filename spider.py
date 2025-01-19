@@ -75,8 +75,8 @@ def get_data(shuru):
         # for index, value in enumerate(data):
         #     row_data[index]=value
         row_data['code']=data[1]
-        row_data['name']=data[2]
-        row_data['股吧']=data[3]
+        # row_data['name']=data[2]
+        # row_data['股吧']=data[3]
         row_data['最新价']=data[4]
         row_data['涨跌幅']=data[5]
         row_data['主力净流入']=data[6]
@@ -111,6 +111,14 @@ def get_data(shuru):
 #         print("成功写入",txt_path)
 #     except:
 #         print("error!")
+
+def process_value(x):# 使用 applymap 检查并处理所有单元格中的“万”和“亿”
+    if isinstance(x, str):
+        if '亿' in x:
+            return (float(x.replace('亿', '').strip())) * 10000
+        elif '万' in x:
+            return (x.replace('万', ''))
+    return x
 
 # def write_binary(shuru,filename):
 #     txt_path=Path.cwd()/"FMLDATA"
@@ -148,6 +156,7 @@ if __name__ == "__main__":
     # write_txt(str(html),"data")
     df = pandas.DataFrame(get_data(html))
     df.replace({"—": "0"}, inplace=True) #清洗空值
+    df = df.map(process_value) #去除“万”，“亿”中文并乘10000
 
 
     txt_path=Path.cwd()/"spider4"
@@ -157,10 +166,10 @@ if __name__ == "__main__":
     df.to_csv(txt_path/"CDS.TXT", sep='\t', header=False,index=False, columns=['code', 'date','超大单流出'], encoding='utf-8')
     df.to_csv(txt_path/"DB.TXT", sep='\t', header=False,index=False, columns=['code', 'date','大单流入'], encoding='utf-8')
     df.to_csv(txt_path/"DS.TXT", sep='\t', header=False,index=False, columns=['code', 'date','大单流出'], encoding='utf-8')
-    df.to_csv(txt_path/"ZB.TXT", sep='\t', header=False,index=False, columns=['code', 'date','中单流入'], encoding='utf-8')
-    df.to_csv(txt_path/"ZS.TXT", sep='\t', header=False,index=False, columns=['code', 'date','中单流出'], encoding='utf-8')
-    df.to_csv(txt_path/"CDJ.TXT", sep='\t', header=False,index=False, columns=['code', 'date','超大单净占比'], encoding='utf-8')
-    df.to_csv(txt_path/"DJ.TXT", sep='\t', header=False,index=False, columns=['code', 'date','大单净占比'], encoding='utf-8')
+    # df.to_csv(txt_path/"ZB.TXT", sep='\t', header=False,index=False, columns=['code', 'date','中单流入'], encoding='utf-8')
+    # df.to_csv(txt_path/"ZS.TXT", sep='\t', header=False,index=False, columns=['code', 'date','中单流出'], encoding='utf-8')
+    # df.to_csv(txt_path/"CDJ.TXT", sep='\t', header=False,index=False, columns=['code', 'date','超大单净占比'], encoding='utf-8')
+    # df.to_csv(txt_path/"DJ.TXT", sep='\t', header=False,index=False, columns=['code', 'date','大单净占比'], encoding='utf-8')
     df.to_csv(txt_path/"ZJ.TXT", sep='\t', header=False,index=False, columns=['code', 'date','中单净占比'], encoding='utf-8')
     df.to_csv(txt_path/"XJ.TXT", sep='\t', header=False,index=False, columns=['code', 'date','小单净占比'], encoding='utf-8')
     print("txt成功保存至",txt_path)
