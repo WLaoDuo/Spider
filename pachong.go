@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -167,7 +169,7 @@ func web_spider(driver_path, browser_path, cookie_path string) (string, error) {
 		Prefs: imagCaps,
 		Path:  "",
 		Args: []string{
-			// "--headless", // 设置Chrome无头模式，在linux下运行，需要设置这个参数，否则会报错
+			"--headless", // 设置Chrome无头模式，在linux下运行，需要设置这个参数，否则会报错
 			"--no-sandbox",
 			"--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.1",
 			"--disable-blink-features=AutomationControlled", // 从 Chrome 88 开始，它的 V8 引擎升级了，加了这个参数，window.navigator.driver=false
@@ -262,8 +264,74 @@ func write_txt(shuru, filename string) error {
 	return nil
 }
 
+func writeBinary(value float32, filename string) error {
+	filePath2, _ := os.Getwd()
+	dirPath := filepath.Join(filePath2, "FMLDATA")
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		err := os.Mkdir(dirPath, os.ModePerm)
+		if err != nil {
+			fmt.Println("无法创建目录:", err)
+			return err
+		}
+	}
+
+	// 2. 生成完整文件路径
+	filePath := filepath.Join(dirPath, filename+".DAY")
+
+	// 3. 生成当天上午8点时间戳
+	timestamp, err := getToday8AMTimestamp()
+	if err != nil {
+		return fmt.Errorf("时间计算错误: %v", err)
+	}
+
+	// 4. 创建并写入二进制文件
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0755) //覆盖写
+	if err != nil {
+		return fmt.Errorf("文件创建失败: %v", err)
+	}
+	defer file.Close()
+
+	// 写入时间戳（小端32位整数）
+	if err := binary.Write(file, binary.LittleEndian, int32(timestamp)); err != nil {
+		return fmt.Errorf("写入时间戳失败: %v", err)
+	}
+
+	// 写入数值（小端单精度浮点数）
+	if err := binary.Write(file, binary.LittleEndian, value); err != nil {
+		return fmt.Errorf("写入数值失败: %v", err)
+	}
+	// fmt.Println("DAY二进制文件成功写入: ", filePath)
+	return nil
+}
+
+// getToday8AMTimestamp 获取当天上午8点的Unix时间戳
+func getToday8AMTimestamp() (int64, error) {
+	now := time.Now()
+
+	// 构造当天8点时间
+	eightAM := time.Date(
+		now.Year(),
+		now.Month(),
+		now.Day(),
+		8, // 小时
+		0, // 分钟
+		0, // 秒
+		0, // 纳秒
+		now.Location(),
+	)
+
+	// 处理跨天情况（如果当前时间早于8点）
+	if now.Before(eightAM) {
+		eightAM = eightAM.Add(-24 * time.Hour)
+	}
+
+	return eightAM.Unix(), nil
+}
+
 func get_data(shuru string) []map[string]string {
-	html, _ := readfile(shuru)
+	// html, _ := readfile(shuru)
+	html := shuru
+
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		log.Fatal(err)
@@ -307,16 +375,70 @@ func get_data(shuru string) []map[string]string {
 
 	return tableData
 }
-func main() {
-	cookie_path, _ := os.Getwd()
-	cookie_path2 := filepath.Join(cookie_path, "cookie.txt")
-	// data, err := (web_spider("D:/study/daima/pachong/chromedriver.exe", "C:/Program Files/Google/Chrome/Application/chrome.exe", cookie_path2))
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// write_txt(data, "test")
 
-	cookie_path2 = filepath.Join(cookie_path, "test.txt.html")
-	data := get_data(cookie_path2)
-	fmt.Print("len(data)=", len(data), "\tlen(data)[0]=", len(data[0]), data[0], data[0]["小单净占比"])
+func extractNumberEnhanced(input string) float32 {
+	if input == "-" {
+		return float32(0)
+	}
+	re := regexp.MustCompile(`([+-]?)(\d+\.?\d*)([万亿]?)`)
+	matches := re.FindStringSubmatch(input)
+	if len(matches) < 4 {
+		return float32(0)
+	}
+
+	sign := matches[1]
+	number := matches[2]
+	unit := matches[3]
+
+	// 单位转换
+	multiplier := 1.0
+	switch unit {
+	// case "万":
+	// 	multiplier = 10000
+	case "亿":
+		// multiplier = 100000000
+		multiplier = 10000
+	}
+
+	// 转换为浮点数并应用单位
+	value, err := strconv.ParseFloat(sign+number, 64)
+	if err != nil {
+		return float32(0)
+	}
+	return float32(value * multiplier)
+}
+
+func main() {
+	workDir, _ := os.Getwd()
+	cookie_path2 := filepath.Join(workDir, "cookie.txt")
+	driver := filepath.Join(workDir, "chromedriver.exe")
+
+	html, err := web_spider(driver, "C:/Program Files/Google/Chrome/Application/chrome.exe", cookie_path2)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	// write_txt(html, "test")
+
+	// cookie_path2 = filepath.Join(cookie_path, "test.txt.html")
+	data2 := get_data(html)
+	// fmt.Println("len(data)=", len(data), "\tlen(data)[0]=", len(data[0]), data[0], data[0]["小单净占比"])
+
+	for _, row := range data2 {
+		// fmt.Printf("--- 第 %d 行 ---\n", rowIndex)
+		// for key, value := range row {
+		// 	fmt.Println("字段", key, ":", value, "转换=", extractNumberEnhanced(value))
+		// }
+		err := writeBinary(extractNumberEnhanced(row["超大单流入"]), row["代码"]+".9")
+		err = writeBinary(extractNumberEnhanced(row["超大单流出"]), row["代码"]+".4")
+		err = writeBinary(extractNumberEnhanced(row["大单流入"]), row["代码"]+".5")
+		err = writeBinary(extractNumberEnhanced(row["大单流出"]), row["代码"]+".6")
+		err = writeBinary(extractNumberEnhanced(row["中单净占比"]), row["代码"]+".7")
+		err = writeBinary(extractNumberEnhanced(row["小单净占比"]), row["代码"]+".8")
+		if err != nil {
+			fmt.Println("发生错误:", err)
+			return
+		}
+	}
+	fmt.Println("成功保存至/FMLDATA目录")
 }
