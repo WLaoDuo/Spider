@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -127,6 +128,7 @@ func getcookie(cookie_path2 string) []*selenium.Cookie {
 			}
 			return true
 		})
+
 		// 将 Cookie 转换为 selenium.Cookie 并添加到切片中
 		// _ = httpOnly
 		seleniumCookie := &selenium.Cookie{
@@ -216,15 +218,15 @@ func web_spider(driver_path, browser_path, cookie_path string) (string, error) {
 	}
 	// time.Sleep(1 * time.Second)
 	driver.Refresh()
-	time.Sleep(1 * time.Second)
+	time.Sleep(500 * time.Millisecond)
 
-	element, _ := driver.FindElement(selenium.ByXPATH, "//li[contains(text(),'资金流向')]")
-	element.Click()
-	time.Sleep(1 * time.Second)
+	element, _ := driver.FindElement(selenium.ByXPATH, "//li[contains(text(),'我的自选')]")
+	// element.Click()
+	// time.Sleep(1 * time.Second)
 
 	scrollbar, _ := driver.FindElement(selenium.ByXPATH, "//tbody/tr[1]/td[10]/span[1]")
 	scrollbar.Click()
-	time.Sleep(1 * time.Second)
+	time.Sleep(500 * time.Millisecond)
 
 	for i := 0; i <= 30; i++ {
 		driver.KeyDown(selenium.PageDownKey)
@@ -393,8 +395,8 @@ func extractNumberEnhanced(input string) float32 {
 	// 单位转换
 	multiplier := 1.0
 	switch unit {
-	// case "万":
-	// 	multiplier = 10000
+	case "万":
+		multiplier = 1
 	case "亿":
 		// multiplier = 100000000
 		multiplier = 10000
@@ -407,34 +409,48 @@ func extractNumberEnhanced(input string) float32 {
 	}
 	return float32(value * multiplier)
 }
-
+func getBrowserPath() string {
+	if path := os.Getenv("CHROME_PATH"); path != "" {
+		return path
+	}
+	switch runtime.GOOS {
+	case "windows":
+		return `C:\Program Files\Google\Chrome\Application\chrome.exe`
+	case "darwin":
+		return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+	default:
+		return "/usr/bin/google-chrome"
+	}
+}
 func main() {
 	workDir, _ := os.Getwd()
-	cookie_path2 := filepath.Join(workDir, "cookie.txt")
+	cookie_path2 := filepath.Join(workDir, "cookies.json.txt")
 	driver := filepath.Join(workDir, "chromedriver.exe")
 
-	html, err := web_spider(driver, "C:/Program Files/Google/Chrome/Application/chrome.exe", cookie_path2)
+	html, err := web_spider(driver, getBrowserPath(), cookie_path2)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	// write_txt(html, "test")
 
-	// cookie_path2 = filepath.Join(cookie_path, "test.txt.html")
 	data2 := get_data(html)
-	// fmt.Println("len(data)=", len(data), "\tlen(data)[0]=", len(data[0]), data[0], data[0]["小单净占比"])
+	// fmt.Println("len(data)=", len(data2), "\tlen(data)[0]=", len(data2[0]), data2[0], data2[0]["小单净占比"])
 
 	for _, row := range data2 {
 		// fmt.Printf("--- 第 %d 行 ---\n", rowIndex)
 		// for key, value := range row {
 		// 	fmt.Println("字段", key, ":", value, "转换=", extractNumberEnhanced(value))
 		// }
-		err := writeBinary(extractNumberEnhanced(row["超大单流入"]), row["代码"]+".9")
-		err = writeBinary(extractNumberEnhanced(row["超大单流出"]), row["代码"]+".4")
-		err = writeBinary(extractNumberEnhanced(row["大单流入"]), row["代码"]+".5")
-		err = writeBinary(extractNumberEnhanced(row["大单流出"]), row["代码"]+".6")
-		err = writeBinary(extractNumberEnhanced(row["中单净占比"]), row["代码"]+".7")
-		err = writeBinary(extractNumberEnhanced(row["小单净占比"]), row["代码"]+".8")
+		err := writeBinary(extractNumberEnhanced(row["超大单流入"]), row["代码"]+".1")
+		err = writeBinary(extractNumberEnhanced(row["大单流入"]), row["代码"]+".2")
+		err = writeBinary(extractNumberEnhanced(row["超大单流出"]), row["代码"]+".3")
+		err = writeBinary(extractNumberEnhanced(row["大单流出"]), row["代码"]+".4")
+		err = writeBinary(extractNumberEnhanced(row["中单净占比"]), row["代码"]+".5")
+		err = writeBinary(extractNumberEnhanced(row["小单净占比"]), row["代码"]+".6")
+		err = writeBinary(extractNumberEnhanced(row["当日DDX"]), row["代码"]+".7")
+		err = writeBinary(extractNumberEnhanced(row["当日DDY"]), row["代码"]+".8")
+		err = writeBinary(extractNumberEnhanced(row["当日DDZ"]), row["代码"]+".9")
 		if err != nil {
 			fmt.Println("发生错误:", err)
 			return
