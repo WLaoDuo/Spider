@@ -9,6 +9,8 @@ https://developer.chrome.com/docs/chromedriver/downloads?hl=zh-cn
 
 # javascript文件使用node本地打包
 
+(从网页提取的js文件打包后被其他程序调用，无需本地实现)
+
 npm init -y
 
 npm install pkg --save-dev
